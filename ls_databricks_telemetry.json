@@ -1,0 +1,16 @@
+{
+  "name": "ls_databricks_telemetry",
+  "properties": {
+    "description": "TEMPLATE. Databricks linked service whose token comes from Key Vault (no secret in this file).",
+    "type": "AzureDatabricks",
+    "typeProperties": {
+      "domain": "https://<workspace-id>.azuredatabricks.net",
+      "accessToken": {
+        "type": "AzureKeyVaultSecret",
+        "store": { "referenceName": "ls_keyvault_telemetry", "type": "LinkedServiceReference" },
+        "secretName": "databricks-access-token"
+      },
+      "existingClusterId": "<cluster-id-or-use-newClusterNodeType-for-a-job-cluster>"
+    }
+  }
+}

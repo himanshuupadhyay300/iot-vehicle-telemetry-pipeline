@@ -1,0 +1,5 @@
+# Runtime
+pyspark==3.5.3
+pyyaml>=6.0
+# Optional: Delta Lake on a local machine (needs internet on first run to fetch jars)
+delta-spark==3.2.0

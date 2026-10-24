@@ -1,0 +1,16 @@
+{
+  "name": "tr_hourly",
+  "properties": {
+    "description": "TEMPLATE. Hourly schedule. Because ingestion is checksum-based and idempotent, an overlapping or repeated run is harmless. Consider a storage-event trigger for the landing container instead.",
+    "type": "ScheduleTrigger",
+    "typeProperties": {
+      "recurrence": { "frequency": "Hour", "interval": 1, "startTime": "2026-01-01T00:00:00Z", "timeZone": "UTC" }
+    },
+    "pipelines": [
+      {
+        "pipelineReference": { "referenceName": "pl_telemetry_medallion", "type": "PipelineReference" },
+        "parameters": { "storage_account": "<storage_account>", "file_pattern": "*.csv" }
+      }
+    ]
+  }
+}

@@ -1,0 +1,60 @@
+# Central configuration. No secrets here: secrets come from environment variables / Key Vault.
+app:
+  name: iot-vehicle-telemetry
+  environment: local
+
+logging:
+  level: INFO
+  json: true
+
+spark:
+  app_name: iot-vehicle-telemetry
+  master: "local[2]"          # ignored on Databricks (cluster provides the session)
+  shuffle_partitions: 4
+  timezone: UTC
+
+storage:
+  format: parquet              # parquet (local default) | delta (needs delta-spark, or Databricks)
+  base_path: output/lakehouse
+  input_path: data/sample      # landing folder with CSV / JSON-lines files
+  reports_path: output/reports
+  state_path: null             # null => <base_path>/_state/state.json (must be a path Python can open)
+  tables:
+    bronze: bronze/telemetry
+    silver: silver/telemetry
+    silver_rejects: silver/telemetry_rejects
+    gold_daily_summary: gold/vehicle_daily_summary
+    gold_temperature_alerts: gold/temperature_alerts
+    gold_vehicle_kpis: gold/vehicle_kpis
+
+ingestion:
+  file_patterns: ["*.csv", "*.json", "*.jsonl"]
+
+quality:
+  vehicle_id_pattern: "^VH-[0-9]{4}$"
+  max_future_minutes: 5
+  # Missing value in a required field  -> record is rejected (quarantined).
+  # Missing value in an optional field -> record is kept and flagged with a warning.
+  required_fields: [speed_kmph, engine_temp_c, latitude, longitude]
+  optional_fields: [fuel_level_pct, battery_voltage_v]
+  ranges:                       # [min, max] inclusive; outside => rejected
+    speed_kmph: [0, 250]
+    engine_temp_c: [-40, 150]
+    fuel_level_pct: [0, 100]
+    battery_voltage_v: [9, 16]
+    latitude: [-90, 90]
+    longitude: [-180, 180]
+
+gold:
+  temperature_warning_c: 105
+  temperature_critical_c: 115
+  low_fuel_pct: 10
+  low_battery_v: 11.8
+  moving_speed_threshold_kmph: 1
+  max_gap_minutes: 5            # gaps longer than this are NOT counted as distance/usage
+  max_plausible_speed_kmph: 250 # segments implying a faster speed are treated as GPS jumps
+
+streaming:                      # optional stage, see src/ingestion/eventhub_stream.py
+  checkpoint_path: output/checkpoints/eventhub
+  trigger_available_now: true
+  use_databricks_shaded_kafka: true

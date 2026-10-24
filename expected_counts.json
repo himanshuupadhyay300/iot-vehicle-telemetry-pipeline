@@ -1,0 +1,29 @@
+{
+  "note": "Computed by the generator from the injected defects, independent of the pipeline code.",
+  "seed": 42,
+  "after_batch_1": {
+    "bronze_rows": 593,
+    "rejected_rows": 12,
+    "valid_rows": 581,
+    "rows_with_warnings": 5,
+    "in_batch_duplicate_rows_removed": 8,
+    "conflicting_duplicate_keys": 2,
+    "late_arrival_rows": 0,
+    "silver_rows": 573,
+    "gold_daily_rows": 5,
+    "temperature_alerts": 10
+  },
+  "after_batch_2": {
+    "bronze_rows": 1219,
+    "rejected_rows_batch_2": 1,
+    "valid_rows_batch_2": 625,
+    "rows_matching_existing_silver": 10,
+    "late_arrival_rows": 15,
+    "silver_rows": 1188,
+    "gold_daily_rows": 10,
+    "gold_vehicle_kpis": 5,
+    "temperature_alerts": 10,
+    "warning_alerts": 5,
+    "critical_alerts": 5
+  }
+}

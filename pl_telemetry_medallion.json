@@ -1,0 +1,27 @@
+{
+  "name": "pl_telemetry_medallion",
+  "properties": {
+    "description": "TEMPLATE (not deployed). Runs the Databricks medallion notebook for newly landed telemetry files.",
+    "parameters": {
+      "storage_account": { "type": "string" },
+      "file_pattern": { "type": "string", "defaultValue": "*.csv" }
+    },
+    "activities": [
+      {
+        "name": "RunMedallionNotebook",
+        "type": "DatabricksNotebook",
+        "dependsOn": [],
+        "policy": { "timeout": "0.02:00:00", "retry": 2, "retryIntervalInSeconds": 120, "secureOutput": false, "secureInput": false },
+        "typeProperties": {
+          "notebookPath": "/Repos/<user-or-service-principal>/iot-vehicle-telemetry-pipeline/notebooks/01_run_medallion_pipeline",
+          "baseParameters": {
+            "storage_account": { "value": "@pipeline().parameters.storage_account", "type": "Expression" },
+            "file_pattern": { "value": "@pipeline().parameters.file_pattern", "type": "Expression" },
+            "stage": "all"
+          }
+        },
+        "linkedServiceName": { "referenceName": "ls_databricks_telemetry", "type": "LinkedServiceReference" }
+      }
+    ]
+  }
+}

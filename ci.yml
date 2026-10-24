@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Tests (unit + end-to-end on Parquet)
+        run: pytest --cov=src --cov-report=term-missing
+      - name: Run the pipeline end to end on the bundled sample data
+        if: matrix.python-version == '3.11'
+        run: |
+          python -m src.pipeline --pattern "telemetry_batch_001.csv"
+          python -m src.pipeline
+          python -m src.utils.sql_runner sql/gold_queries.sql
+      - name: Upload data quality + execution reports
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-reports
+          path: output/reports/
+
+  delta-tests:
+    # Verifies the Delta Lake code path (downloads Delta jars from Maven at runtime).
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - run: pip install -r requirements-dev.txt
+      - run: RUN_DELTA_TESTS=1 pytest tests/test_delta.py

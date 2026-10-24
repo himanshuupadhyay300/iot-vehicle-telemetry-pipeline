@@ -1,0 +1,69 @@
+# Azure DevOps pipeline - TEMPLATE (not executed from this repository).
+# CI  : lint + tests on every PR and push to main
+# CD  : on main, sync the Databricks Repo and publish ADF artifacts using a service connection.
+trigger:
+  branches: { include: [main] }
+pr:
+  branches: { include: [main] }
+
+variables:
+  pythonVersion: '3.11'
+  serviceConnection: 'sc-azure-telemetry'        # Azure Resource Manager service connection (workload identity)
+  databricksHost: 'https://<workspace-id>.azuredatabricks.net'
+
+stages:
+  - stage: Test
+    jobs:
+      - job: lint_and_test
+        pool: { vmImage: ubuntu-latest }
+        steps:
+          - task: UsePythonVersion@0
+            inputs: { versionSpec: $(pythonVersion) }
+          - script: sudo apt-get update && sudo apt-get install -y openjdk-17-jre-headless
+            displayName: Install Java (needed by Spark)
+          - script: pip install -r requirements-dev.txt
+            displayName: Install dependencies
+          - script: ruff check .
+            displayName: Lint
+          - script: pytest --junitxml=junit.xml --cov=src --cov-report=xml
+            displayName: Unit + integration tests
+          - task: PublishTestResults@2
+            condition: succeededOrFailed()
+            inputs: { testResultsFiles: junit.xml }
+          - task: PublishCodeCoverageResults@2
+            inputs: { summaryFileLocation: coverage.xml }
+
+  - stage: Deploy
+    dependsOn: Test
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: deploy_dev
+        environment: telemetry-dev          # add an approval check on this environment for prod
+        pool: { vmImage: ubuntu-latest }
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: AzureCLI@2
+                  displayName: Sync Databricks Repo to the commit being deployed
+                  inputs:
+                    azureSubscription: $(serviceConnection)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      pip install databricks-cli
+                      export DATABRICKS_HOST=$(databricksHost)
+                      export DATABRICKS_TOKEN=$(az account get-access-token \
+                        --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d --query accessToken -o tsv)
+                      databricks repos update --path /Repos/deploy/iot-vehicle-telemetry-pipeline --branch main
+                - task: AzureCLI@2
+                  displayName: Publish ADF pipeline definitions
+                  inputs:
+                    azureSubscription: $(serviceConnection)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az extension add --name datafactory --only-show-errors
+                      az datafactory pipeline create --factory-name adf-vehtel-dev --resource-group rg-vehtel-dev \
+                        --name pl_telemetry_medallion --pipeline @pipelines/adf/pl_telemetry_medallion.json

@@ -1,0 +1,23 @@
+[project]
+name = "iot-vehicle-telemetry-pipeline"
+version = "1.0.0"
+description = "Medallion (Bronze/Silver/Gold) pipeline for synthetic IoT vehicle telemetry on PySpark, Delta Lake and Azure"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra -q"
+markers = [
+    "delta: requires delta-spark and internet access to fetch Delta jars (run with RUN_DELTA_TESTS=1)",
+]
+
+[tool.ruff]
+line-length = 110
+# Databricks notebooks rely on injected globals (dbutils, spark, display)
+extend-exclude = ["notebooks"]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["B008", "E501"]
